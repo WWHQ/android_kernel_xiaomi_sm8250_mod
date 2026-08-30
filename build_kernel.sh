@@ -78,6 +78,48 @@ if [ "$ENABLE_KSU" -eq 1 ]; then
     echo "[*] Downloading and running ReSukiSU remote setup script..."
     curl -LSs "https://raw.githubusercontent.com/ReSukiSU/ReSukiSU/main/kernel/setup.sh" | bash
     echo "[+] KernelSU setup finished."
+
+    echo "==========================================="
+    echo " [*] Applying SUSFS 4.19 patch"
+    echo "==========================================="
+    
+    SUSFS_PATCH_URL="https://raw.githubusercontent.com/JackA1ltman/NonGKI_Kernel_Build_2nd/mainline/Patches/Patch/susfs_patch_to_4.19.patch"
+    
+    curl -L "$SUSFS_PATCH_URL" -o /tmp/susfs_patch_to_4.19.patch
+    
+    echo "[*] Checking kernel version..."
+    make kernelversion
+    
+    echo "[*] Checking SUSFS patch..."
+    grep -q "diff --git a/include/linux/susfs_def.h" \
+        /tmp/susfs_patch_to_4.19.patch || {
+            echo "[!] Invalid SUSFS patch!"
+            exit 1
+        }
+    
+    echo "[*] Applying SUSFS patch..."
+    git apply --check /tmp/susfs_patch_to_4.19.patch
+    
+    git apply /tmp/susfs_patch_to_4.19.patch
+    
+    echo "[+] SUSFS patch applied successfully."
+    
+    test -f include/linux/susfs_def.h || {
+        echo "[!] include/linux/susfs_def.h missing!"
+        exit 1
+    }
+    
+    test -f fs/susfs.c || {
+        echo "[!] fs/susfs.c missing!"
+        exit 1
+    }
+    
+    grep -q 'obj-\$(CONFIG_KSU_SUSFS) += susfs.o' fs/Makefile || {
+        echo "[!] fs/susfs.o is not added to fs/Makefile!"
+        exit 1
+    }
+    
+    echo "[+] SUSFS integration verified."
 fi
 
 # ==========================================
